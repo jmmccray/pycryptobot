@@ -1,47 +1,152 @@
 version: "3.9"
 
 services:
-  # btcusd:
-  #     build:
-  #       context: .
-  #     container_name: btcusd
-  #     volumes:
-  #       - ./market/BTCUSD/coinbase.key:/app/coinbase.key.json
-  #       - ./market/BTCUSD/config.json:/app/config.json
-  #       - ./market/BTCUSD/pycryptobot.log:/app/pycryptobot.log
-  #       - ./market/BTCUSD/graphs:/app/graphs
-  #       #- /etc/localtime:/etc/localtime:ro
-  #     environment:
-  #       - PYTHONUNBUFFERED=1
-  #     deploy:
-  #       restart_policy:
-  #         condition: on-failure
-
-  # I THINK each service is a bot
   adausd:
       build:
         context: .
-      container_name: adausd
+      container_name: ADAUSD
       volumes:
       - ./market/ADAUSD/coinbasepro.key:/app/coinbasepro.key
       - ./market/ADAUSD/config.json:/app/config.json
       - ./market/ADAUSD/pycryptobot.log:/app/pycryptobot.log
       - ./market/ADAUSD/graphs:/app/graphs
+      - ./telegram-pool:/app/telegram-pool
       environment:
         - PYTHONUNBUFFERED=1
-      # deploy:
-      #   restart_policy:
-      #     condition: no
+      restart: always
+  
+  algousd:
+      build:
+        context: .
+      container_name: ALGOUSD
+      volumes:
+      - ./market/ALGOUSD/coinbasepro.key:/app/coinbasepro.key
+      - ./market/ALGOUSD/config.json:/app/config.json
+      - ./market/ALGOUSD/pycryptobot.log:/app/pycryptobot.log
+      - ./market/ALGOUSD/graphs:/app/graphs
+      - ./telegram-pool:/app/telegram-pool
+      environment:
+        - PYTHONUNBUFFERED=1
+      deploy:
+        restart_policy:
+          condition: on-failure
+  
+  atomusd:
+      build:
+        context: .
+      container_name: ATOMUSD
+      volumes:
+      - ./market/ATOMUSD/coinbasepro.key:/app/coinbasepro.key
+      - ./market/ATOMUSD/config.json:/app/config.json
+      - ./market/ATOMUSD/pycryptobot.log:/app/pycryptobot.log
+      - ./market/ATOMUSD/graphs:/app/graphs
+      environment:
+        - PYTHONUNBUFFERED=1
+      deploy:
+        restart_policy:
+          condition: on-failure
 
-  # ethusd:
+  btcusd:
+      build:
+        context: .
+      container_name: BTCUSD
+      volumes:
+        - ./market/BTCUSD/coinbasepro.key:/app/coinbasepro.key
+        - ./market/BTCUSD/config.json:/app/config.json
+        - ./market/BTCUSD/pycryptobot.log:/app/pycryptobot.log
+        - ./market/BTCUSD/graphs:/app/graphs
+        #- /etc/localtime:/etc/localtime:ro
+      environment:
+        - PYTHONUNBUFFERED=1
+      deploy:
+        restart_policy:
+          condition: on-failure
+  
+  dotusd:
+      build:
+        context: .
+      container_name: DOTUSD
+      volumes:
+        - ./market/DOTUSD/coinbasepro.key:/app/coinbasepro.key
+        - ./market/DOTUSD/config.json:/app/config.json
+        - ./market/DOTUSD/pycryptobot.log:/app/pycryptobot.log
+        - ./market/DOTUSD/graphs:/app/graphs
+      environment:
+        - PYTHONUNBUFFERED=1
+      deploy:
+        restart_policy:
+          condition: on-failure
+  
+  ethusd:
+      build:
+        context: .
+      container_name: ETHUSD
+      volumes:
+      - ./market/ETHUSD/coinbasepro.key:/app/coinbasepro.key
+      - ./market/ETHUSD/config.json:/app/config.json
+      - ./market/ETHUSD/pycryptobot.log:/app/pycryptobot.log
+      - ./market/ETHUSD/graphs:/app/graphs
+      - ./telegram-pool:/app/telegram-pool
+      environment:
+        - PYTHONUNBUFFERED=1
+      deploy:
+        restart_policy:
+          condition: on-failure
+  
+  # ftmusd:
   #     build:
   #       context: .
-  #     container_name: ethusd
+  #     container_name: FTMUSD
   #     volumes:
-  #     - ./market/ETHUSD/coinbase.key:/app/coinbase.key.json
-  #     - ./market/ETHUSD/config.json:/app/config.json
-  #     - ./market/ETHUSD/pycryptobot.log:/app/pycryptobot.log
-  #     - ./market/ETHUSD/graphs:/app/graphs
+  #     - ./market/FTMUSD/coinbasepro.key:/app/coinbasepro.key
+  #     - ./market/FTMUSD/config.json:/app/config.json
+  #     - ./market/FTMUSD/pycryptobot.log:/app/pycryptobot.log
+  #     - ./market/FTMUSD/graphs:/app/graphs
+  #     environment:
+  #       - PYTHONUNBUFFERED=1
+  #     deploy:
+  #       restart_policy:
+  #         condition: on-failure
+  
+  maticusd:
+      build:
+        context: .
+      container_name: MATICUSD
+      volumes:
+      - ./market/MATICUSD/coinbasepro.key:/app/coinbasepro.key
+      - ./market/MATICUSD/config.json:/app/config.json
+      - ./market/MATICUSD/pycryptobot.log:/app/pycryptobot.log
+      - ./market/MATICUSD/graphs:/app/graphs
+      environment:
+        - PYTHONUNBUFFERED=1
+      deploy:
+        restart_policy:
+          condition: on-failure
+
+  solusd:
+      build:
+        context: .
+      container_name: SOLUSD
+      volumes:
+      - ./market/SOLUSD/coinbasepro.key:/app/coinbasepro.key
+      - ./market/SOLUSD/config.json:/app/config.json
+      - ./market/SOLUSD/pycryptobot.log:/app/pycryptobot.log
+      - ./market/SOLUSD/graphs:/app/graphs
+      environment:
+        - PYTHONUNBUFFERED=1
+      deploy:
+        restart_policy:
+          condition: on-failure
+  
+  # xlmusd:
+  #     build:
+  #       context: .
+  #     container_name: XLMUSD
+  #     volumes:
+  #     - ./market/XLMUSD/coinbasepro.key:/app/coinbasepro.key
+  #     - ./market/XLMUSD/config.json:/app/config.json
+  #     - ./market/XLMUSD/pycryptobot.log:/app/pycryptobot.log
+  #     - ./market/XLMUSD/graphs:/app/graphs
   #     environment:
   #       - PYTHONUNBUFFERED=1
   #     deploy:
