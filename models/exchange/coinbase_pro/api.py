@@ -890,7 +890,7 @@ class PublicAPI(AuthAPIBase):
 
         try:
             if method == "GET":
-                resp = requests.get(self._api_url + uri)
+                resp = requests.get(self._api_url + uri) # may need a loop to try again to handle exception [JDEBUG]
             elif method == "POST":
                 resp = requests.post(self._api_url + uri, json=payload)
 
@@ -900,11 +900,13 @@ class PublicAPI(AuthAPIBase):
                     resp_message = resp.json()["message"]
                     message = f"{method} ({resp.status_code}) {self._api_url}{uri} - {resp_message}"
                     if self.die_on_api_error:
+                        Logger.error(str)(f'api.py exception: {message}')
                         raise Exception(message)
                     else:
                         Logger.error(
                             f"Coinbase Pro API request error - retry attempt {trycnt}: {message}"
                         )
+                    Logger.info(f'api.py sleeping')
                     time.sleep(15)
                     trycnt += 1
                 else:
@@ -919,7 +921,7 @@ class PublicAPI(AuthAPIBase):
             return resp.json()
 
         except requests.ConnectionError as err:
-            Logger.error("requests.ConnectionError")  # remove this later
+            Logger.error("requests.ConnectionError")    # remove this later
             return self.handle_api_error(err, "ConnectionError")
 
         except requests.exceptions.HTTPError as err:
