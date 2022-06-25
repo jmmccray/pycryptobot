@@ -66,7 +66,7 @@ def parser(app, coinbase_config, args={}):
                 coinbase_config['api_secret'] = secret
                 coinbase_config['api_passphrase'] = password
             except :
-                raise RuntimeError(f"Unable to read {api_key_file}")
+                raise RuntimeError(f"Unable to read {api_key_file} :(")
 
         if 'api_key' in coinbase_config and 'api_secret' in coinbase_config and \
                 'api_passphrase' in coinbase_config and 'api_url' in coinbase_config:
@@ -74,14 +74,14 @@ def parser(app, coinbase_config, args={}):
             # validates the api key is syntactically correct
             p = re.compile(r"^[a-f0-9]{32}$")
             if not p.match(coinbase_config['api_key']):
-                raise TypeError('Coinbase Pro API key is invalid')
+                raise TypeError('Coinbase Pro API key is invalid: ', coinbase_config['api_key'])
 
             app.api_key = coinbase_config['api_key']
 
             # validates the api secret is syntactically correct
             p = re.compile(r"^[A-z0-9+\/]+==$")
             if not p.match(coinbase_config['api_secret']):
-                raise TypeError('Coinbase Pro API secret is invalid')
+                raise TypeError('Coinbase Pro API secret is invalid: ', coinbase_config['api_secret'])
 
             app.api_secret = coinbase_config['api_secret']
 
