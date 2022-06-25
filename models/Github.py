@@ -81,7 +81,7 @@ class Github():
                 if self.die_on_api_error:
                     raise Exception(f"{method.upper()}GET ({resp.status_code}) {self.api_url}{uri} - {resp.json()['message']}")
                 else:
-                    #print('error:', method.upper() + ' (' + '{}'.format(resp.status_code) + ') ' + self.api_url + uri + ' - ' + '{}'.format(resp.json()['message']))
+                    print('error:', method.upper() + ' (' + '{}'.format(resp.status_code) + ') ' + self.api_url + uri + ' - ' + '{}'.format(resp.json()['message']))
                     return []
 
             resp.raise_for_status()
@@ -97,9 +97,10 @@ class Github():
                     return None
             else:
                 if self.die_on_api_error:
-                    raise SystemExit(f'ConnectionError: {self.api_url}')
+                    print(err)
+                    raise SystemExit(f'ConnectionError: {self.api_url} \n Err: {err}') # If connection error, have it retry for one minute
                 else:
-                    print(f'ConnectionError: {self.api_url}')
+                    print(f'ConnectionError: {self.api_url} \n Err: {err}')
                     return None
 
         except requests.exceptions.HTTPError as err:

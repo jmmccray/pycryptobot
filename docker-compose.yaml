@@ -23,15 +23,15 @@ services:
         context: .
       container_name: adausd
       volumes:
-      - ./market/ADAUSD/coinbase.key:/app/coinbase.key.json
+      - ./market/ADAUSD/coinbasepro.key:/app/coinbasepro.key
       - ./market/ADAUSD/config.json:/app/config.json
       - ./market/ADAUSD/pycryptobot.log:/app/pycryptobot.log
       - ./market/ADAUSD/graphs:/app/graphs
       environment:
         - PYTHONUNBUFFERED=1
-      deploy:
-        restart_policy:
-          condition: on-failure
+      # deploy:
+      #   restart_policy:
+      #     condition: no
 
   # ethusd:
   #     build:
