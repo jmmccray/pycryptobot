@@ -572,7 +572,7 @@ class TechnicalAnalysis:
             raise ValueError("interval is out of range")
 
         if len(self.df) < interval:
-            raise Exception("Data range too small.")
+            raise Exception("Data range too small. (ADX)")
 
         df = self.df.copy()
 
@@ -657,7 +657,7 @@ class TechnicalAnalysis:
             raise ValueError("interval is out of range")
 
         if len(self.df) < interval:
-            raise Exception("Data range too small.")
+            raise Exception("Data range too small. (ATR)")
 
         high_low = self.df["high"] - self.df["low"]
         high_close = abs(self.df["high"] - self.df["close"].shift())
@@ -703,7 +703,7 @@ class TechnicalAnalysis:
             raise ValueError("Period is out of range")
 
         if len(self.df) < period:
-            raise Exception("Data range too small.")
+            raise Exception("Data range too small. (EMA)")
 
         return self.df.close.ewm(span=period, adjust=False).mean()
 
@@ -717,7 +717,7 @@ class TechnicalAnalysis:
             raise ValueError("Period is out of range")
 
         if len(self.df) < period:
-            raise Exception("Data range too small.")
+            raise Exception("Data range too small. (addEMA)")
 
         self.df["ema" + str(period)] = self.exponentialMovingAverage(period)
 
@@ -802,7 +802,7 @@ class TechnicalAnalysis:
         """Calculates the Moving Average Convergence Divergence (MACD)"""
 
         if len(self.df) < 26:
-            raise Exception("Data range too small.")
+            raise Exception("Data range too small. (MACD)")
 
         if (
             not self.df["ema12"].dtype == "float64"
@@ -1044,7 +1044,7 @@ class TechnicalAnalysis:
             raise ValueError("Period is out of range")
 
         if len(self.df) < period:
-            raise Exception("Data range too small.")
+            raise Exception("Data range too small.  (SMA)")
 
         return self.df.close.rolling(period, min_periods=1).mean()
 
@@ -1058,7 +1058,7 @@ class TechnicalAnalysis:
             raise ValueError("Period is out of range")
 
         if len(self.df) < period:
-            raise Exception("Data range too small.")
+            raise Exception("Data range too small. (addSMA)")
 
         self.df["sma" + str(period)] = self.simpleMovingAverage(period)
 
