@@ -48,6 +48,8 @@ s = sched.scheduler(time.time, time.sleep)
 
 pd.set_option('display.float_format', '{:.8f}'.format)
 
+restart = 0 # tracks how many times bot _apphas restarted
+
 def signal_handler(signum, frame):
     if signum == 2:
         print("Please be patient while websockets terminate!")
@@ -431,19 +433,23 @@ def executeJob(
                     (sc, _app, _state, _technical_analysis, _websocket),
                 )
 
-    if len(df_last) > 0:
+    Logger.debug(f"DF_LAST: {len(df_last)}")
+    if  len(df_last) > 0:
         now = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-
+        Logger.debug(f"JDEBUG2")
         # last_action polling if live
         if _app.isLive():
+            Logger.debug(f"JDEBUG-live")
             last_action_current = _state.last_action
             # If using websockets make this call every minute instead of each iteration
             if _app.enableWebsocket() and not _app.isSimulation():
                 if last_api_call_datetime.seconds > 60:
+                    Logger.debug(f"JDEBUG-D")
                     _state.pollLastAction()
             else:
                 _state.pollLastAction()
             if last_action_current != _state.last_action:
+                Logger.debug(f"JDEBUG-E")
                 Logger.info(
                     f"last_action change detected from {last_action_current} to {_state.last_action}"
                 )
@@ -459,6 +465,8 @@ def executeJob(
                 _state.trailing_buy = 0
                 _state.action = None
                 telegram_bot.add_open_order()
+                Logger.debug(f"JDEBUG-B")
+
 
                 Logger.warning(
                     f"{_app.getMarket()} ({_app.printGranularity}) - {datetime.today().strftime('%Y-%m-%d %H:%M:%S')}\n"
@@ -476,6 +484,7 @@ def executeJob(
                 )
 
             elif _state.action == "check_sell" and _state.last_action == "SELL":
+                Logger.debug(f"JDEBUG-C")
                 _state.prevent_loss = 0
                 _state.tsl_triggered = 0
                 _state.trade_error_cnt = 0
@@ -502,7 +511,7 @@ def executeJob(
                     "telegram",
                 ):
                     sys.exit(0)
-
+        Logger.debug(f"JDEBUG-A")
         if not _app.isSimulation():
             ticker = _app.getTicker(_app.getMarket(), _websocket)
             now = ticker[0]
@@ -511,12 +520,12 @@ def executeJob(
                 price = float(df_last["close"].values[0])
         else:
             price = float(df_last["close"].values[0])
-
+        Logger.debug(f"JDEBUG3")
         if price < 0.000001:
             raise Exception(
                 f"{_app.getMarket()} is unsuitable for trading, quote price is less than 0.000001!"
             )
-
+        Logger.debug(f"JDEBUG4")
         # technical indicators
         ema12gtema26 = bool(df_last["ema12gtema26"].values[0])
         ema12gtema26co = bool(df_last["ema12gtema26co"].values[0])
@@ -562,6 +571,7 @@ def executeJob(
         if not _app.disableBuyOBV():
             telegram_bot.addindicators("OBV", float(obv_pc) > 0)
 
+        Logger.debug(f"JDEBUG5")
         if _app.isSimulation():
             # Reset the Strategy so that the last record is the current sim date
             # To allow for calculations to be done on the sim date being processed
@@ -571,7 +581,7 @@ def executeJob(
             )
         else:
             strategy = Strategy(_app, _state, df, _state.iterations)
-
+        Logger.debug(f"JDEBUG6")
         _state.action = strategy.getAction(_app, price, current_sim_date)
 
         immediate_action = False
@@ -687,7 +697,7 @@ def executeJob(
             bullbeartext = " (BEAR)"
 
         # polling is every 5 minutes (even for hourly intervals), but only process once per interval
-        # Logger.debug("DateCheck: " + str(immediate_action) + ' ' + str(_state.last_df_index) + ' ' + str(current_df_index))
+        Logger.debug("DateCheck: " + str(immediate_action) + ' ' + str(_state.last_df_index) + ' ' + str(current_df_index))
         if immediate_action is True or _state.last_df_index != current_df_index:
             text_box = TextBox(80, 22)
 
@@ -1914,6 +1924,7 @@ def executeJob(
                     Logger.info(json.dumps(simulation, sort_keys=True, indent=4))
 
         else:
+            Logger.debug(f"JDEBUG1")
             if (
                 _state.last_buy_size > 0
                 and _state.last_buy_price > 0
@@ -2070,18 +2081,21 @@ def main():
             s.run()
 
         try:
+            Logger.info(f"Run app...")
             runApp(_websocket)
         except (KeyboardInterrupt, SystemExit):
             raise
         except (BaseException, Exception) as e:  # pylint: disable=broad-except
-            if app.autoRestart():
+            if True: #Debug
+            #if app.autoRestart(): # COULD JUST SET THIS TO TRUE always
                 # Wait 30 second and try to relaunch application
                 time.sleep(30)
-                Logger.critical(f"Restarting application after exception: {repr(e)}")
+                restart+=1
+                Logger.critical(f"(Nested) Restarting application {restart} after exception: {repr(e)}")
 
                 if not app.disableTelegramErrorMsgs():
                     app.notifyTelegram(
-                        f"Auto restarting bot for {app.getMarket()} after exception: {repr(e)}"
+                        f"(Nested) Auto restarting bot for {app.getMarket()} after exception: {repr(e)}"
                     )
 
                 # Cancel the events queue
@@ -2093,7 +2107,7 @@ def main():
                 raise
 
     # catches a keyboard break of app, exits gracefully
-    except (KeyboardInterrupt, SystemExit):
+    except (KeyboardInterrupt, SystemExit): # may remove SystemExit
         if app.enableWebsocket() and not app.isSimulation():
             signal.signal(signal.SIGINT, signal_handler)  # disable ctrl/cmd+c
             Logger.warning(
@@ -2123,11 +2137,21 @@ def main():
                 telegram_bot.removeactivebot()
             except:
                 pass
-        Logger.critical(repr(e))
+        Logger.critical(f"(Main) Restarting application after exception: {repr(e)}")
+        time.sleep(10)
+
+        if not app.disableTelegramErrorMsgs():
+            app.notifyTelegram(
+                f"(Main) Auto restarting bot for {app.getMarket()} after exception: {repr(e)}"
+            )
+
+        # Cancel the events queue
+        map(s.cancel, s.queue)
+
+        # Restart the app
+        runApp(_websocket)
         # pylint: disable=protected-access
         os._exit(0)
-        # raise
-
 
 if __name__ == "__main__":
     if sys.version_info < (3, 6, 0):
