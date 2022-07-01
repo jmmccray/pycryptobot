@@ -36,7 +36,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     mkdir -p /app/.config/matplotlib && \
     chown -R pycryptobot:pycryptobot /app
 
+
 WORKDIR /app
+
+# Set timezone to America/Los_Angeles
+RUN cp /usr/share/zoneinfo/America/Los_Angeles /etc/localtime && \
+    echo "America/Los_Angeles" > /etc/timezone
 
 USER pycryptobot
 
