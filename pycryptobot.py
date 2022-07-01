@@ -4,20 +4,27 @@
 """Python Crypto Bot consuming Coinbase Pro or Binance APIs"""
 
 import functools
+import json
 import os
 import sched
+import signal
 import sys
 import time
-import signal
-import json
 from datetime import datetime, timedelta
+
 import pandas as pd
 
 from models.AppState import AppState
 from models.chat import telegram
+from models.exchange.binance import WebSocketClient as BWebSocketClient
+from models.exchange.coinbase_pro import WebSocketClient as CWebSocketClient
+from models.exchange.ExchangesEnum import Exchange
 from models.exchange.Granularity import Granularity
+from models.exchange.kucoin import WebSocketClient as KWebSocketClient
 from models.helper.LogHelper import Logger
 from models.helper.MarginHelper import calculate_margin
+from models.helper.TelegramBotHelper import TelegramBotHelper
+from models.helper.TextBoxHelper import TextBox
 from models.PyCryptoBot import PyCryptoBot
 from models.PyCryptoBot import truncate as _truncate
 from models.Stats import Stats
@@ -25,12 +32,6 @@ from models.Strategy import Strategy
 from models.Trading import TechnicalAnalysis
 from models.TradingAccount import TradingAccount
 from views.TradingGraphs import TradingGraphs
-from models.helper.TextBoxHelper import TextBox
-from models.exchange.ExchangesEnum import Exchange
-from models.exchange.binance import WebSocketClient as BWebSocketClient
-from models.exchange.coinbase_pro import WebSocketClient as CWebSocketClient
-from models.exchange.kucoin import WebSocketClient as KWebSocketClient
-from models.helper.TelegramBotHelper import TelegramBotHelper
 
 # minimal traceback
 sys.tracebacklimit = 1
@@ -48,16 +49,16 @@ s = sched.scheduler(time.time, time.sleep)
 
 pd.set_option('display.float_format', '{:.8f}'.format)
 
-restart = 0 # tracks how many times bot _apphas restarted
+restart = 0 # track number of restarts
 
-def signal_handler(signum, frame):
+def signal_handler(signum):
     if signum == 2:
         print("Please be patient while websockets terminate!")
         #Logger.debug(frame)
         return
 
 
-def executeJob(
+def execute_job(
     sc=None,
     _app: PyCryptoBot = None,
     _state: AppState = None,
@@ -140,7 +141,7 @@ def executeJob(
                 _websocket.start()
             _app.setGranularity(_app.getGranularity())
             list(map(s.cancel, s.queue))
-            s.enter(5, 1, executeJob, (sc, _app, _state, _technical_analysis, _websocket))
+            s.enter(5, 1, execute_job, (sc, _app, _state, _technical_analysis, _websocket))
             # _app.read_config(_app.getExchange())
             telegram_bot.updatebotstatus("active")
 
@@ -155,7 +156,7 @@ def executeJob(
             _websocket.start()
             Logger.info("Restarting job in 30 seconds...")
             s.enter(
-                30, 1, executeJob, (sc, _app, _state, _technical_analysis, _websocket)
+                30, 1, execute_job, (sc, _app, _state, _technical_analysis, _websocket)
             )
 
     # increment _state.iterations
@@ -229,7 +230,7 @@ def executeJob(
                     try:
                         _state.iterations = trading_data.index.get_loc(str(simDate)) + 1
                         dateFound = True
-                    except:
+                    except: # pylint: disable=bare-except
                         simDate += timedelta(seconds=_app.getGranularity().value[0])
 
                 if (
@@ -326,7 +327,7 @@ def executeJob(
 
         _app.setGranularity(Granularity.FIVE_MINUTES)
         list(map(s.cancel, s.queue))
-        s.enter(5, 1, executeJob, (sc, _app, _state, _technical_analysis, _websocket))
+        s.enter(5, 1, execute_job, (sc, _app, _state, _technical_analysis, _websocket))
 
     if (
         (last_api_call_datetime.seconds > 60 or _app.isSimulation())
@@ -352,7 +353,7 @@ def executeJob(
 
         _app.setGranularity(Granularity.ONE_HOUR)
         list(map(s.cancel, s.queue))
-        s.enter(5, 1, executeJob, (sc, _app, _state, _technical_analysis, _websocket))
+        s.enter(5, 1, execute_job, (sc, _app, _state, _technical_analysis, _websocket))
 
     # use actual sim mode date to check smartchswitch
     if (
@@ -380,7 +381,7 @@ def executeJob(
 
         _app.setGranularity(Granularity.FIFTEEN_MINUTES)
         list(map(s.cancel, s.queue))
-        s.enter(5, 1, executeJob, (sc, _app, _state, _technical_analysis, _websocket))
+        s.enter(5, 1, execute_job, (sc, _app, _state, _technical_analysis, _websocket))
 
     # use actual sim mode date to check smartchswitch
     if (
@@ -407,7 +408,7 @@ def executeJob(
 
         _app.setGranularity(Granularity.ONE_HOUR)
         list(map(s.cancel, s.queue))
-        s.enter(5, 1, executeJob, (sc, _app, _state, _technical_analysis, _websocket))
+        s.enter(5, 1, execute_job, (sc, _app, _state, _technical_analysis, _websocket))
 
     if (
         _app.getExchange() == Exchange.BINANCE
@@ -418,7 +419,7 @@ def executeJob(
             Logger.error(f"error: data frame length is < 250 ({str(len(df))})")
             list(map(s.cancel, s.queue))
             s.enter(
-                300, 1, executeJob, (sc, _app, _state, _technical_analysis, _websocket)
+                300, 1, execute_job, (sc, _app, _state, _technical_analysis, _websocket)
             )
     else:
         if len(df) < 300:
@@ -429,7 +430,7 @@ def executeJob(
                 s.enter(
                     300,
                     1,
-                    executeJob,
+                    execute_job,
                     (sc, _app, _state, _technical_analysis, _websocket),
                 )
 
@@ -507,8 +508,7 @@ def executeJob(
                 )
 
                 if _app.enableexitaftersell and _app.startmethod not in (
-                    "standard",
-                    "telegram",
+                    "standard"
                 ):
                     sys.exit(0)
         Logger.debug(f"JDEBUG-A")
@@ -561,7 +561,7 @@ def executeJob(
         two_black_gapping = bool(df_last["two_black_gapping"].values[0])
 
         # Log data for Telegram Bot
-        telegram_bot.addindicators("EMA", ema12gtema26co or ema12ltema26)
+        telegram_bot.addindicators("EMA", ema12gtema26 or ema12gtema26co)
         if not _app.disableBuyElderRay():
             telegram_bot.addindicators("ERI", elder_ray_buy)
         if _app.disableBullOnly():
@@ -1419,8 +1419,8 @@ def executeJob(
                         text_box.center("*** Executing TEST Buy Order ***")
                         text_box.singleLine()
 
-                    _app.trade_tracker = _app.trade_tracker.append(
-                        {
+                    _app.trade_tracker = pd.concat([_app.trade_tracker,
+                        pd.DataFrame({
                             "Datetime": str(current_sim_date),
                             "Market": _app.getMarket(),
                             "Action": "BUY",
@@ -1431,9 +1431,7 @@ def executeJob(
                                 "close"
                             ].max(),
                             "DF_Low": df[df["date"] <= current_sim_date]["close"].min(),
-                        },
-                        ignore_index=True,
-                    )
+                        }, index={0})], ignore_index=True)
 
                     state.in_open_trade = True
                     _state.last_action = "BUY"
@@ -1680,8 +1678,8 @@ def executeJob(
                         text_box.center("*** Executing TEST Sell Order ***")
                         text_box.singleLine()
 
-                    _app.trade_tracker = _app.trade_tracker.append(
-                        {
+                    _app.trade_tracker = pd.concat([_app.trade_tracker,
+                        pd.DataFrame({
                             "Datetime": str(current_sim_date),
                             "Market": _app.getMarket(),
                             "Action": "SELL",
@@ -1695,9 +1693,8 @@ def executeJob(
                                 "close"
                             ].max(),
                             "DF_Low": df[df["date"] <= current_sim_date]["close"].min(),
-                        },
-                        ignore_index=True,
-                    )
+                        }, index={0})], ignore_index=True)
+                        
                     state.in_open_trade = False
                     state.last_api_call_datetime -= timedelta(seconds=60)
                     _state.last_action = "SELL"
@@ -1949,15 +1946,17 @@ def executeJob(
                         )
                     )
                     + "%",
+                    _state.action
                 )
 
-            if _state.last_action == "BUY" and _state.in_open_trade:
+            if _state.last_action == "BUY" and _state.in_open_trade and last_api_call_datetime.seconds > 60:
                 # update margin for telegram bot
                 telegram_bot.addmargin(
                     str(_truncate(margin, 4) + "%") if _state.in_open_trade == True else " ",
                     str(_truncate(profit, 2)) if _state.in_open_trade == True else " ",
                     price,
-                    change_pcnt_high
+                    change_pcnt_high,
+                    _state.action
                 )
             
             # Update the watchdog_ping
@@ -1986,7 +1985,7 @@ def executeJob(
                     s.enter(
                         0,
                         1,
-                        executeJob,
+                        execute_job,
                         (sc, _app, _state, _technical_analysis, None, df),
                     )
                 else:
@@ -1995,7 +1994,7 @@ def executeJob(
                     s.enter(
                         1,
                         1,
-                        executeJob,
+                        execute_job,
                         (sc, _app, _state, _technical_analysis, None, df),
                     )
 
@@ -2017,7 +2016,7 @@ def executeJob(
                 s.enter(
                     5,
                     1,
-                    executeJob,
+                    execute_job,
                     (sc, _app, _state, _technical_analysis, _websocket),
                 )
             else:
@@ -2026,7 +2025,7 @@ def executeJob(
                     s.enter(
                         15,
                         1,
-                        executeJob,
+                        execute_job,
                         (sc, _app, _state, _technical_analysis, _websocket),
                     )
                 else:
@@ -2034,7 +2033,7 @@ def executeJob(
                     s.enter(
                         60,
                         1,
-                        executeJob,
+                        execute_job,
                         (sc, _app, _state, _technical_analysis, _websocket),
                     )
 
@@ -2074,9 +2073,9 @@ def main():
         def runApp(_websocket):
             # run the first job immediately after starting
             if app.isSimulation():
-                executeJob(s, app, state, technical_analysis, _websocket, trading_data)
+                execute_job(s, app, state, technical_analysis, _websocket, trading_data)
             else:
-                executeJob(s, app, state, technical_analysis, _websocket)
+                execute_job(s, app, state, technical_analysis, _websocket)
 
             s.run()
 
@@ -2137,12 +2136,13 @@ def main():
                 telegram_bot.removeactivebot()
             except:
                 pass
-        Logger.critical(f"(Main) Restarting application after exception: {repr(e)}")
+        restart+=1
+        Logger.critical(f"(Main) Restarting ({restarting}) application after exception: {repr(e)}")
         time.sleep(10)
 
         if not app.disableTelegramErrorMsgs():
             app.notifyTelegram(
-                f"(Main) Auto restarting bot for {app.getMarket()} after exception: {repr(e)}"
+                f"(Main) Auto restarting ({restart})bot for {app.getMarket()} after exception: {repr(e)}"
             )
 
         # Cancel the events queue
